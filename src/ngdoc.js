@@ -10,6 +10,7 @@ var fs = require('fs');
 var fspath = require('path');
 var errorsJson;
 var marked = require('marked');
+var _ = require('lodash');
 marked.setOptions({
   gfm: true,
   tables: true
@@ -478,11 +479,11 @@ Doc.prototype = {
           var status = {
             code:match[1],
             explain:match[2],
-            description:self.markdown(text.replace(match[0], match[3]))
+            description:match[3] ? self.markdown(text.replace(match[0], match[3])) : ''
           }
           self.statuses.push(status);
         }else if (atName == 'output') {
-          match = text.match(/^^\{([^\}]+)\}(\s*(.*)\n+(.*))?/);
+          match = text.match(/^\{([^\}]+)\}(\s*([^\n]*)\n*([\W\w\s\S]*))?/);
                                 // 1     1   2   3 3    4 4 2
           if (!match) {
             throw new Error("Not a valid 'output' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
@@ -494,9 +495,9 @@ Doc.prototype = {
             output.structure = (function(str){
               var o;
               try{
-                o = JSON.parse(o);
+                eval("o="+str);
               }catch(e){
-
+                throw e;
               }
               return o;
             })(match[4]);
@@ -566,10 +567,10 @@ Doc.prototype = {
       dom.h('Href', self.href, dom.html);
       dom.h('Description', self.description, dom.html);
       //self.html_usage_input(dom);
-      self.html_usage_parameters(dom, self.getParam);
-      self.html_usage_parameters(dom, self.postParam);
+      self.html_usage_parameters(dom, self.getParam, 'get');
+      self.html_usage_parameters(dom, self.postParam, 'post');
       self.html_usage_statuses(dom);
-      //self.html_usage_output(dom);
+      self.html_usage_output(dom);
       dom.h('Example', self.example, dom.html);
     });
 
@@ -595,7 +596,7 @@ Doc.prototype = {
     return 'label type-hint type-hint-' + typeClass;
   },
 
-  html_usage_parameters: function(dom,params) {
+  html_usage_parameters: function(dom, params, type) {
     var self = this;
     if(this.animations) {
       dom.h('Animations', this.animations, function(animations){
@@ -611,7 +612,7 @@ Doc.prototype = {
       // dom.html('<a href="api/ngAnimate.$animate">Click here</a> to learn more about the steps involved in the animation.');
     }
     if(params.length > 0) {
-      dom.html('<h2>Parameters</h2>');
+      dom.html('<h2>'+(type? type.toUpperCase() : '')+' Parameters</h2>');
       dom.html('<table class="variables-matrix table table-bordered table-striped">');
       dom.html('<thead>');
       dom.html('<tr>');
@@ -703,6 +704,81 @@ Doc.prototype = {
       dom.html('</tbody>');
       dom.html('</table>');
     }
+  },
+
+  html_usage_output: function(dom){
+    var self = this;
+    if(self.output.type=='json'){
+      dom.h("Output", "<pre>\n"+jsonFormart(self.output.structure,1)+"\n</pre>", dom.html);
+    }else{
+      dom.html('<h2>Output</h2>');
+      dom.html('<table class="variables-matrix table table-bordered table-striped">');
+      dom.html('<thead>');
+      dom.html('<tr>');
+      dom.html('<th>Type</th>');
+      dom.html('<th>Details</th>');
+      dom.html('</tr>');
+      dom.html('</thead>');
+      dom.html('<tbody>');
+      dom.html('<tr>');
+      dom.html('<td>');
+      dom.html(self.output.type);
+      dom.html('</td>');
+      dom.html('<td>');
+      dom.html(self.output.description);
+      dom.html('</td>');
+      dom.html('</tr>');
+      dom.html('</tbody>');
+    }
+    function getSpaces(n){
+      var s='';
+      while(n--){
+        s += '  ';
+      }
+      return s;
+    }
+    function jsonFormart(o, deep) {
+      deep = deep || 0;
+      var str = "";
+      var spaces = getSpaces(deep);
+      if(_.isArray(o)){
+        str += "[\n"+getSpaces(deep)+"";
+        _.forEach(o, function(item) {
+          str += jsonFormart(item, deep+1) + ",";
+        });
+        str = str.slice(0,-1);
+        str +="\n"+getSpaces(deep-1)+"]";
+      }else if(_.isObject(o)){
+        str += "{\n";
+        _.forEach(o, function(item, key) {
+          str += spaces + key + ':' +jsonFormart(item, deep+1) + ",\n";
+        });
+        str = str.slice(0,-2);
+
+        str += "\n"+getSpaces(deep-1)+"}";
+      }else if(_.isString(o)){
+        var match = o.match(/^\{([^}]+)\}\s+(.*)?/);
+        //  1      1    23       3   4   4 5      5  2   6  6
+        if (!match) {
+          throw new Error("Not a valid 'output' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
+        }
+
+        var optional = (match[1].slice(-1) === '=');
+        var param = {
+          description:o.replace(match[0], match[2]),
+          type: optional ? match[1].substring(0, match[1].length-1) : match[1],
+          optional: optional ? 'TRUE' : 'FALSE'
+        };
+        str += "{";
+        _.forEach(param, function (n, key) {
+          str += " " + key +':'+n+",";
+        });
+        str = str.slice(0,-1);
+        str += ""+getSpaces(deep-1)+" }";
+      }
+      return str;
+    }
+
   },
 
   html_usage_returns: function(dom) {
