@@ -212,25 +212,18 @@ function processDoc(opts) {
       // IMPORTANT: If you do not want an error here to destroy a gulp watch,
       // see: http://stackoverflow.com/questions/23971388/prevent-errors-from-breaking-crashing-gulp-watch
       try{
-        ngdoc.merge(reader.docs);
+        //ngdoc.merge(reader.docs);
         reader.docs.forEach(function(doc){
-          try {
-            // this hack is here because on OSX angular.module and angular.Module map to the same file.
-            var id = doc.id.replace('angular.Module', 'angular.IModule').replace(':', '.'),
-                file = path.join(fakeDest, 'partials', doc.section, id + '.html'),
-                dir = path.join(fakeDest, 'partials', doc.section);
-            docsStream.push(new File({
-              base: fakeDest,
-              cwd: fakeDest,
-              path: file,
-              contents: new Buffer(doc.html(), 'utf8')
-            }));
-          } catch (docError) {
-            var cause = docError.name + ': ' + docError.message,
-                placement = doc.file + ':' + doc.line,
-                message = cause + ' at ' + placement;
-            throw new Error(message);
-          }
+          // this hack is here because on OSX angular.module and angular.Module map to the same file.
+          var id = doc.id,//.replace('angular.Module', 'angular.IModule').replace(':', '.'),
+              file = path.join(fakeDest, 'partials', doc.section, id + '.html'),
+              dir = path.join(fakeDest, 'partials', doc.section);
+          docsStream.push(new File({
+            base: fakeDest,
+            cwd: fakeDest,
+            path: file,
+            contents: new Buffer(doc.html(), 'utf8')
+          }));
         });
 
         ngdoc.checkBrokenLinks(reader.docs, setup.apis, options);

@@ -62,6 +62,16 @@ function Doc(text, file, line, options) {
   this.events = this.events || [];
   this.links = this.links || [];
   this.anchors = this.anchors || [];
+
+
+  this.getParam = this.getParam || [];
+  this.postParam = this.postParam || [];
+  this.name = this.name || '';
+  this.href = this.href || '';
+  this.statuses = this.statuses || [];
+  this.output = this.output || {};
+  this.ignore = this.ignore || false;
+  this.fakedoc = this.fakedoc || '';
 }
 Doc.METADATA_IGNORE = (function() {
   var words = fs.readFileSync(__dirname + '/ignore.words', 'utf8');
@@ -378,7 +388,7 @@ Doc.prototype = {
     var match;
     var self = this;
     self.text.split(NEW_LINE).forEach(function(line){
-      if ((match = line.match(/^\s*@(\w+)(\s+(.*))?/))) {
+      if ((match = line.match(/^\s*@([\w\.]+)(\s+(.*))?/))) {
         // we found @name ...
         // if we have existing name
         flush();
@@ -405,13 +415,20 @@ Doc.prototype = {
     function flush() {
       if (atName) {
         var text = trim(atText.join('\n')), match;
-        if (atName == 'module') {
+        if (atName == 'name') {
           match = text.match(/^\s*(\S+)\s*$/);
           if (match) {
-            self.moduleName = match[1];
+            self.name = match[1];
           }
-        } else if (atName == 'param') {
-          match = text.match(/^\{([^}]+)\}\s+(([^\s=]+)|\[(\S+)=([^\]]+)\])\s+(.*)/);
+        }else if (atName == 'ignore') {
+          this.ignore = true;
+        }else if (atName == 'href') {
+          match = text.match(/^\s*(\S+)\s*$/);
+          if (match) {
+            self.href = match[1];
+          }
+        }  else if (atName == 'input.post') {
+          match = text.match(/^\{([^}]+)\}\s+(([^\s=]+)|\[(\S+)=([^\]]+)\])\s+(.*)?/);
                              //  1      1    23       3   4   4 5      5  2   6  6
           if (!match) {
             throw new Error("Not a valid 'param' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
@@ -430,37 +447,61 @@ Doc.prototype = {
           if(param.name.indexOf(".") > 0){
             param.isProperty = true;
           }
-          self.param.push(param);
-        } else if (atName == 'returns' || atName == 'return') {
-          match = text.match(/^\{([^}]+)\}\s+(.*)/);
+          self.postParam.push(param);
+        } else if (atName == 'input.get') {
+          match = text.match(/^\{([^}]+)\}\s+(([^\s=]+)|\[(\S+)=([^\]]+)\])\s+(.*)?/);
+          //  1      1    23       3   4   4 5      5  2   6  6
           if (!match) {
-            throw new Error("Not a valid 'returns' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
+            throw new Error("Not a valid 'param' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
           }
-          self.returns = {
-            type: match[1],
-            description: self.markdown(text.replace(match[0], match[2]))
+
+          var optional = (match[1].slice(-1) === '=');
+          var param = {
+            name: match[4] || match[3],
+            description:self.markdown(text.replace(match[0], match[6])),
+            type: optional ? match[1].substring(0, match[1].length-1) : match[1],
+            optional: optional,
+            default: match[5]
           };
-        } else if(atName == 'requires') {
-          match = text.match(/^([^\s]*)\s*([\S\s]*)/);
-          self.requires.push({
-            name: match[1],
-            text: self.markdown(match[2])
-          });
-        } else if(atName == 'property') {
-          match = text.match(/^\{(\S+)\}\s+(\S+)(\s+(.*))?/);
-          if (!match) {
-            throw new Error("Not a valid 'property' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
+          // if param name is a part of an object passed to a method
+          // mark it, so it's not included in the rendering later
+          if(param.name.indexOf(".") > 0){
+            param.isProperty = true;
           }
-          var property = new Doc({
-            type: match[1],
-            name: match[2],
-            shortName: match[2],
-            description: self.markdown(text.replace(match[0], match[4]))
-          });
-          self.properties.push(property);
-        } else if(atName == 'eventType') {
-          match = text.match(/(broadcast|emit)/);
-          self.type = match[1];
+          self.getParam.push(param);
+        } else if (atName == 'status') {
+          match = text.match(/^([\w]+)\s+([^\n]+)[\n]*(.*)?/);
+          //  1   1    2     2      3 3
+          if (!match) {
+            throw new Error("Not a valid 'status' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
+          }
+          var status = {
+            code:match[1],
+            explain:match[2],
+            description:self.markdown(text.replace(match[0], match[3]))
+          }
+          self.statuses.push(status);
+        }else if (atName == 'output') {
+          match = text.match(/^^\{([^\}]+)\}(\s*(.*)\n+(.*))?/);
+                                // 1     1   2   3 3    4 4 2
+          if (!match) {
+            throw new Error("Not a valid 'output' format: " + text + ' (found in: ' + self.file + ':' + self.line + ')');
+          }
+          var output = {};
+          output.type = match[1];
+          output.description = match[3];
+          if('json' === match[1]){
+            output.structure = (function(str){
+              var o;
+              try{
+                o = JSON.parse(o);
+              }catch(e){
+
+              }
+              return o;
+            })(match[4]);
+          }
+          self.output = output;
         } else {
           self[atName] = text;
         }
@@ -504,29 +545,31 @@ Doc.prototype = {
     */
     dom.h(title(this), function() {
       notice('deprecated', 'Deprecated API', self.deprecated);
-      if (self.ngdoc === 'error') {
+      if (self.fakedoc === 'error') {
         minerrMsg = lookupMinerrMsg(self);
         dom.tag('pre', {
           class:'minerr-errmsg',
           'error-display': minerrMsg.replace(/"/g, '&quot;')
         }, minerrMsg);
       }
-      if (self.ngdoc != 'overview') {
+      if (self.fakedoc != 'overview') {
         dom.h('Description', self.description, dom.html);
       }
-      dom.h('Dependencies', self.requires, function(require){
-        dom.tag('code', function() {
-          var id = require.name[0] == '$' ? 'ng.' + require.name : require.name,
-              name = require.name.split(/[\.:\/]/).pop();
-          dom.tag('a', {href: self.convertUrlToAbsolute(id)}, name);
-        });
-        dom.html(require.text);
-      });
 
-      (self['html_usage_' + self.ngdoc] || function() {
+     /* (self['html_usage_' + self.ngdoc] || function() {
         throw new Error("Don't know how to format @ngdoc: " + self.ngdoc);
-      }).call(self, dom);
+      }).call(self, dom);*/
+      //self.html_usage_name(dom);
 
+      //self.html_usage_href(dom);
+      dom.h('Name', self.name, dom.html);
+      dom.h('Href', self.href, dom.html);
+      dom.h('Description', self.description, dom.html);
+      //self.html_usage_input(dom);
+      self.html_usage_parameters(dom, self.getParam);
+      self.html_usage_parameters(dom, self.postParam);
+      self.html_usage_statuses(dom);
+      //self.html_usage_output(dom);
       dom.h('Example', self.example, dom.html);
     });
 
@@ -552,9 +595,8 @@ Doc.prototype = {
     return 'label type-hint type-hint-' + typeClass;
   },
 
-  html_usage_parameters: function(dom) {
+  html_usage_parameters: function(dom,params) {
     var self = this;
-    var params = this.param ? this.param : [];
     if(this.animations) {
       dom.h('Animations', this.animations, function(animations){
         dom.html('<ul>');
@@ -613,6 +655,49 @@ Doc.prototype = {
         }
         description += '</td>';
         dom.html(description);
+        dom.html('</tr>');
+      };
+      dom.html('</tbody>');
+      dom.html('</table>');
+    }
+  },
+
+  html_usage_statuses: function(dom) {
+    var self = this;
+    var statuses = self.statuses;
+    if(this.animations) {
+      dom.h('Animations', this.animations, function(animations){
+        dom.html('<ul>');
+        var animations = animations.split("\n");
+        animations.forEach(function(ani) {
+          dom.html('<li>');
+          dom.text(ani);
+          dom.html('</li>');
+        });
+        dom.html('</ul>');
+      });
+      // dom.html('<a href="api/ngAnimate.$animate">Click here</a> to learn more about the steps involved in the animation.');
+    }
+    if(statuses.length > 0) {
+      dom.html('<h2>Statuses</h2>');
+      dom.html('<table class="variables-matrix table table-bordered table-striped">');
+      dom.html('<thead>');
+      dom.html('<tr>');
+      dom.html('<th>code</th>');
+      dom.html('<th>explain</th>');
+      dom.html('<th>description</th>');
+      dom.html('</tr>');
+      dom.html('</thead>');
+      dom.html('<tbody>');
+      for(var i=0;i<statuses.length;i++) {
+        var status = statuses[i];
+        var code = status.code;
+        var explain = status.explain;
+        var description = status.description;
+        dom.html('<tr>');
+        dom.html('<td>' + code + '</td>');
+        dom.html('<td>' + explain + '</td>');
+        dom.html('<td>' + description + '</td>');
         dom.html('</tr>');
       };
       dom.html('</tbody>');
@@ -964,6 +1049,7 @@ var GLOBALS = /^angular\.([^\.]+)$/,
 
 
 function title(doc) {
+  return doc.fakedoc || doc.name;
   if (!doc.name) return doc.name;
   var match,
       module = doc.moduleName,

@@ -140,17 +140,6 @@ Copy additional css files to the documentation app
 ####analytics
 Optional include Google Analytics in the documentation app.
 
-Example usage:
-
-```js
-var opts = {
-  analytics: {
-    account: 'UA-XXXXXX-YY',
-    domainName: 'http://mywebpage.com/'
-  }
-};
-```
-
 ####discussions
 Optional include [discussions](http://disqus.com) in the documentation app.
 
