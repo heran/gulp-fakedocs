@@ -500,6 +500,7 @@ Doc.prototype = {
               try{
                 eval("o="+str);
               }catch(e){
+                console.log(str);
                 throw e;
               }
               return o;
