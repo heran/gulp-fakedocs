@@ -73,6 +73,7 @@ function Doc(text, file, line, options) {
   this.output = this.output || {};
   this.ignore = this.ignore || false;
   this.fakedoc = this.fakedoc || '';
+  this.needAuth = this.needAuth || false;
 }
 Doc.METADATA_IGNORE = (function() {
   var words = fs.readFileSync(__dirname + '/ignore.words', 'utf8');
@@ -422,7 +423,9 @@ Doc.prototype = {
             self.name = match[1];
           }
         }else if (atName == 'ignore') {
-          this.ignore = true;
+          self.ignore = true;
+        }else if (atName == 'needAuth') {
+          self.needAuth = true;
         }else if (atName == 'href') {
           match = text.match(/^\s*(\S+)\s*$/);
           if (match) {
@@ -490,7 +493,7 @@ Doc.prototype = {
           }
           var output = {};
           output.type = match[1];
-          output.description = match[3];
+          output.description = self.markdown(match[3]);
           if('json' === match[1]){
             output.structure = (function(str){
               var o;
@@ -553,9 +556,9 @@ Doc.prototype = {
           'error-display': minerrMsg.replace(/"/g, '&quot;')
         }, minerrMsg);
       }
-      if (self.fakedoc != 'overview') {
+      /*if (self.fakedoc != 'overview') {
         dom.h('Description', self.description, dom.html);
-      }
+      }*/
 
      /* (self['html_usage_' + self.ngdoc] || function() {
         throw new Error("Don't know how to format @ngdoc: " + self.ngdoc);
@@ -566,6 +569,7 @@ Doc.prototype = {
       dom.h('Name', self.name, dom.html);
       dom.h('Href', self.href, dom.html);
       dom.h('Description', self.description, dom.html);
+      dom.h('Must authentication', self.needAuth ? 'TRUE' : 'FALSE', dom.html);
       //self.html_usage_input(dom);
       self.html_usage_parameters(dom, self.getParam, 'get');
       self.html_usage_parameters(dom, self.postParam, 'post');
@@ -709,7 +713,7 @@ Doc.prototype = {
   html_usage_output: function(dom){
     var self = this;
     if(self.output.type=='json'){
-      dom.h("Output", "<pre>\n"+jsonFormart(self.output.structure,1)+"\n</pre>", dom.html);
+      dom.h("Output", '<div>'+self.output.description+'</div>'+self.markdown('<pre>'+jsonFormart(self.output.structure,1)+'</pre>'), dom.html);
     }else{
       dom.html('<h2>Output</h2>');
       dom.html('<table class="variables-matrix table table-bordered table-striped">');
@@ -769,11 +773,11 @@ Doc.prototype = {
           type: optional ? match[1].substring(0, match[1].length-1) : match[1],
           optional: optional ? 'TRUE' : 'FALSE'
         };
-        str += "{";
+        str += "{\n";
         _.forEach(param, function (n, key) {
-          str += " " + key +':'+n+",";
+          str += spaces + " " + key +":\""+n+"\",\n";
         });
-        str = str.slice(0,-1);
+        str = str.slice(0,-2);
         str += ""+getSpaces(deep-1)+" }";
       }
       return str;
