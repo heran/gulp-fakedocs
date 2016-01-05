@@ -389,6 +389,7 @@ Doc.prototype = {
     var atText;
     var match;
     var self = this;
+    self.notNames = [];
     self.text.split(NEW_LINE).forEach(function(line){
       if ((match = line.match(/^\s*@([\w\.]+)(\s+(.*))?/))) {
         // we found @name ...
@@ -509,6 +510,7 @@ Doc.prototype = {
           self.output = output;
         } else {
           self[atName] = text;
+          self.notNames[atName] = text;
         }
       }
     }
@@ -576,7 +578,12 @@ Doc.prototype = {
       self.html_usage_parameters(dom, self.postParam, 'post');
       self.html_usage_statuses(dom);
       self.html_usage_output(dom);
-      dom.h('Example', self.example, dom.html);
+      for(k in self.notNames){
+        if(_.indexOf(['name', 'href', 'description', 'needAuth', 'getParam', 'postParam', 'fakedoc', 'href', 'section'],k) < 0){
+          console.log(k);console.log(self[k]);
+          dom.h(k, self[k], dom.html);
+        }
+      }
     });
 
     self.anchors = dom.anchors;
@@ -715,7 +722,7 @@ Doc.prototype = {
     var self = this;
     if(self.output.type=='json'){
       dom.h("Output", '<div>'+self.output.description+'</div>'+self.markdown('<pre>'+jsonFormart(self.output.structure,1)+'</pre>'), dom.html);
-    }else{
+    }else if(self.output.type){
       dom.html('<h2>Output</h2>');
       dom.html('<table class="variables-matrix table table-bordered table-striped">');
       dom.html('<thead>');
@@ -733,7 +740,7 @@ Doc.prototype = {
       dom.html(self.output.description);
       dom.html('</td>');
       dom.html('</tr>');
-      dom.html('</tbody>');
+      dom.html('</tbody></table>');
     }
     function getSpaces(n){
       var s='';
