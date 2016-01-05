@@ -580,7 +580,6 @@ Doc.prototype = {
       self.html_usage_output(dom);
       for(k in self.notNames){
         if(_.indexOf(['name', 'href', 'description', 'needAuth', 'getParam', 'postParam', 'fakedoc', 'href', 'section'],k) < 0){
-          console.log(k);console.log(self[k]);
           dom.h(k, self[k], dom.html);
         }
       }
