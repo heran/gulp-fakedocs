@@ -1246,7 +1246,7 @@ function metadata(docs){
       shortName = 'input [' + shortName + ']';
     }
 
-    pages.push({
+    var page = {
       section: doc.section,
       id: doc.id,
       name: title(doc),
@@ -1255,7 +1255,15 @@ function metadata(docs){
       moduleName: doc.moduleName,
       shortDescription: doc.shortDescription(),
       keywords: doc.keywords()
-    });
+    };
+    var otherKeys = ['deprecated', 'android.deprecated','ios.deprecated','h5.deprecated','delete', 'android.delete','ios.delete','h5.delete','since', 'android.since','ios.since','h5.since'];
+    for(i in otherKeys){
+      var key = otherKeys[i];
+      if(doc[key]){
+        page[key] = doc[key];
+      }
+    }
+    pages.push(page);
   });
   pages.sort(sidebarSort);
   return pages;

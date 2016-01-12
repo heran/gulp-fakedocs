@@ -489,11 +489,19 @@ docsApp.controller.DocsController = function($scope, $location, $window, section
 
         if (ranking) {
           if (keywords.indexOf(term) == -1) {
-            ranking = null;
+            //ranking = null;
+            if ((index = page.name.indexOf(term)) != -1) {
+              ranking.rank += 10;
+            }else{
+              ranking = null;
+            }
           } else {
             ranking.rank ++; // one point for each term found
             if ((index = title.indexOf(term)) != -1) {
               ranking.rank += 20 - index; // ten points if you match title
+            }
+            if ((index = page.name.indexOf(term)) != -1) {
+              ranking.rank += 10;
             }
           }
         }

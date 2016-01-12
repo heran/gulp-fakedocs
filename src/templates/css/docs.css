@@ -300,3 +300,17 @@ ul.events > li > h3 {
 .type-hint-number {
   background:rgb(189, 63, 66);
 }
+html,
+body,
+.doc-wrapper,
+.main-container{
+  height: 100%;
+  overflow: hidden;
+}
+.nav-wrapper,.content-wrapper{
+  height: 90%;
+  overflow-y: auto;
+}
+.delete{
+  text-decoration: line-through;
+}
