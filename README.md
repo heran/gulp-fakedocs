@@ -1,11 +1,13 @@
 gulp-ngdocs
 ===========
 
-Gulp plugin for building [AngularJS](http://docs.angularjs.org) like documentation. This is inspired from [grunt-ngdocs](https://www.npmjs.org/package/grunt-ngdocs).
+Gulp plugin for building server api documents.
+
+Based on[AngularJS](http://docs.angularjs.org) like documentation.
 
 ##Setup
 
-`npm install gulp-ngdocs --save-dev`
+`npm install gulp-fakedocs --save-dev`
 
 ##Usage
 
