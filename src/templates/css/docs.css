@@ -37,6 +37,7 @@ img.AngularJS-small {
 
 .spacer {
   height: 1em;
+  padding-top: 20px;
 }
 
 
@@ -48,11 +49,21 @@ img.AngularJS-small {
 
 .form-search {
   margin-right: 10px;
+  position: relative;
+  height: 100%;
 }
 
 .form-search .search-query {
   width: 180px;
   width: 200px \9;
+  position: absolute;
+  top: -50px;
+}
+.form-search .nav-content{
+  height: 85%;
+  overflow-y: auto;
+  overflow-x: visible;
+  margin-top: 50px;
 }
 
 .form-search .dropdown-menu {
@@ -66,29 +77,29 @@ img.AngularJS-small {
   color: black;
 }
 
-.form-search > ul.nav > li > a {
+.form-search ul.nav > li > a {
   margin: 0;
   overflow: auto;
 }
 
-.form-search > ul.nav > li.module {
+.form-search ul.nav > li.module {
   background-color: #d3d3d3;
 }
 
-.form-search > ul.nav > li.section {
+.form-search ul.nav > li.section {
   background-color: #ebebeb;
   min-height: 14px;
 }
 
-.form-search > ul.nav > li.first {
+.form-search ul.nav > li.first {
   padding-top: 6px;
 }
 
-.form-search > ul.nav > li.last {
+.form-search ul.nav > li.last {
   padding-bottom: 6px;
 }
 
-.form-search > ul.nav > li.last + li.api-list-item {
+.form-search ul.nav > li.last + li.api-list-item {
   margin-top: -6px;
   padding-bottom: 6px;
 }
@@ -303,13 +314,15 @@ ul.events > li > h3 {
 html,
 body,
 .doc-wrapper,
-.main-container{
+.main-container,
+.nav-wrapper{
   height: 100%;
   overflow: hidden;
 }
-.nav-wrapper,.content-wrapper{
+.content-wrapper{
   height: 90%;
   overflow-y: auto;
+  overflow-x: visible;
 }
 .delete{
   text-decoration: line-through;
